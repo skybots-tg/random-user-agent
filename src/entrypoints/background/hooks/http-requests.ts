@@ -172,34 +172,44 @@ export async function setRequestHeaders(
       id: RuleIDs.ReplaceClientHints,
       action: {
         type: RuleActionType.MODIFY_HEADERS,
-        requestHeaders: [
-          brandsWithMajor.length
-            ? {
+        // only chromium-based browsers send the client hints, so for the others (FireFox, Safari) all of them must
+        // be removed - otherwise the headers do not match the user-agent and reveal the spoofing
+        // https://github.com/tarampampam/random-user-agent/issues/697
+        requestHeaders: brandsWithMajor.length
+          ? [
+              {
                 operation: HeaderOperation.SET,
                 header: HeaderNames.CLIENT_HINT_BRAND_MAJOR,
                 value: brandsWithMajor.map((b) => `"${b.brand}";v="${b.version}"`).join(', '),
-              }
-            : { operation: HeaderOperation.REMOVE, header: HeaderNames.CLIENT_HINT_BRAND_MAJOR },
-          brandsWithFull.length
-            ? {
+              },
+              brandsWithFull.length
+                ? {
+                    operation: HeaderOperation.SET,
+                    header: HeaderNames.CLIENT_HINT_BRAND_FULL,
+                    value: brandsWithFull.map((b) => `"${b.brand}";v="${b.version}"`).join(', '),
+                  }
+                : { operation: HeaderOperation.REMOVE, header: HeaderNames.CLIENT_HINT_BRAND_FULL },
+              {
                 operation: HeaderOperation.SET,
-                header: HeaderNames.CLIENT_HINT_BRAND_FULL,
-                value: brandsWithFull.map((b) => `"${b.brand}";v="${b.version}"`).join(', '),
-              }
-            : { operation: HeaderOperation.REMOVE, header: HeaderNames.CLIENT_HINT_BRAND_FULL },
-          {
-            operation: HeaderOperation.SET,
-            header: HeaderNames.CLIENT_HINT_PLATFORM,
-            value: `"${setPlatform}"`,
-          },
-          {
-            operation: HeaderOperation.SET,
-            header: HeaderNames.CLIENT_HINT_MOBILE,
-            value: setIsMobile ? '?1' : '?0',
-          },
-          { operation: HeaderOperation.REMOVE, header: HeaderNames.CLIENT_HINT_FULL_VERSION },
-          { operation: HeaderOperation.REMOVE, header: HeaderNames.CLIENT_HINT_PLATFORM_VERSION },
-        ],
+                header: HeaderNames.CLIENT_HINT_PLATFORM,
+                value: `"${setPlatform}"`,
+              },
+              {
+                operation: HeaderOperation.SET,
+                header: HeaderNames.CLIENT_HINT_MOBILE,
+                value: setIsMobile ? '?1' : '?0',
+              },
+              { operation: HeaderOperation.REMOVE, header: HeaderNames.CLIENT_HINT_FULL_VERSION },
+              { operation: HeaderOperation.REMOVE, header: HeaderNames.CLIENT_HINT_PLATFORM_VERSION },
+            ]
+          : [
+              HeaderNames.CLIENT_HINT_BRAND_MAJOR,
+              HeaderNames.CLIENT_HINT_BRAND_FULL,
+              HeaderNames.CLIENT_HINT_PLATFORM,
+              HeaderNames.CLIENT_HINT_MOBILE,
+              HeaderNames.CLIENT_HINT_FULL_VERSION,
+              HeaderNames.CLIENT_HINT_PLATFORM_VERSION,
+            ].map((header) => ({ operation: HeaderOperation.REMOVE, header })),
       },
       condition,
     },
@@ -218,7 +228,12 @@ export async function setRequestHeaders(
           },
         ],
       },
-      condition,
+      // the payload is read from the navigation timing only, so there is no need to add it to the other responses
+      // (and to overwrite the original server-timing header of the API responses, for example)
+      condition: {
+        ...condition,
+        resourceTypes: ['main_frame', 'sub_frame'] as Array<chrome.declarativeNetRequest.ResourceType>,
+      },
     })
   }
 

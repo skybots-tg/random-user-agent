@@ -14,9 +14,6 @@ const m2s = (millis: number): number => Math.round(millis / 1000)
 
 // run the background script
 ;(async () => {
-  // register the content scripts
-  await registerContentScripts()
-
   // detect the host OS
   const hostOS = (await chrome.runtime.getPlatformInfo()).os
 
@@ -33,6 +30,9 @@ const m2s = (millis: number): number => Math.round(millis / 1000)
   const settings = new Settings(new StorageArea('settings-struct-v3', 'sync', 'local'), detectBrowser())
   const initSettings = await settings.get()
   debug('settings', initSettings)
+
+  // register the content scripts (only for the sites where the extension is enabled)
+  await registerContentScripts(initSettings)
 
   // for the current user-agent, we need to use the 'local' storage area because it supports much more frequent
   // updates and does not require synchronization between devices. do not use the 'sync' storage area for this purpose
@@ -101,6 +101,9 @@ const m2s = (millis: number): number => Math.round(millis / 1000)
 
   settings.onChange(async (s) => {
     debug('settings were changed', s)
+
+    // re-register the content scripts, since the list of sites where the extension is enabled may be changed
+    await registerContentScripts(s)
 
     if (s.enabled) {
       // 🌝 if the extension is enabled, we need to enable required features

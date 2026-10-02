@@ -6,16 +6,18 @@
   try {
     // Important Note:
     //
-    // Chromium-based browsers (like Chrome, Edge, Opera, etc.) support the `world` property in the
-    // `chrome.scripting.registerContentScripts` API. However, FireFox does not. Therefore, I need to ensure that the
-    // "inject" script code is executed in both environments.
+    // This script is a fallback for browsers without support for the `world` property in the
+    // `chrome.scripting.registerContentScripts` API (FireFox before v128). In such browsers the "inject" script
+    // code must be added to the page using the script tag.
     //
     // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/scripting/RegisteredContentScript
 
     const script = document.createElement('script')
     const parent = document.head || document.documentElement
 
-    script.type = 'module'
+    // the script must be a classic one (NOT `type="module"`): once any module script starts loading, the browser
+    // ignores all the `<script type="importmap">` that follow it, and sites that rely on import maps (GitHub, for
+    // example) stop working - https://github.com/tarampampam/random-user-agent/issues/634
     script.setAttribute('id', __UNIQUE_INJECT_FILENAME__)
     script.src = chrome.runtime.getURL(__UNIQUE_INJECT_FILENAME__)
 
