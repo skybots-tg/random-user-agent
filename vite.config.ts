@@ -152,7 +152,12 @@ const copyAndModifyManifestPlugin: PluginOption = {
           background: { scripts: [content.background.service_worker], type: content.background.type },
           browser_specific_settings: {
             // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/declarativeNetRequest/updateDynamicRules
-            gecko: { strict_min_version: '113.0', id: 'random-user-agent-fixed@fork' },
+            gecko: {
+              strict_min_version: '113.0',
+              id: 'random-user-agent-fixed@fork',
+              // the extension does not collect any user data (required for the new add-ons on AMO)
+              data_collection_permissions: { required: ['none'] },
+            },
             gecko_android: { strict_min_version: '120.0' },
           },
         }),
